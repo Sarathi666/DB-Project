@@ -1,9 +1,12 @@
+// src/App.js
 import React from 'react';
+import HomePage from './HomePage';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 function App() {
   return (
-    <div>
-      Clean React Application
+    <div className="App">
+      <HomePage />
     </div>
   );
 }
