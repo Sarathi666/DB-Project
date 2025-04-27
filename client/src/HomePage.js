@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Container,Modal,Navbar, Nav, Button,Form } from 'react-bootstrap';
+import { Container,Modal,Navbar, Nav, Button,Form, Table } from 'react-bootstrap';
 import logo from './assets/logo.jpeg';
 import axios from 'axios';
+import { IconButton } from '@mui/material';
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+
 
 
 //alert modal
@@ -275,9 +278,8 @@ function LoginForm({
 
 //profile modal
 
-function ProfileModal({ show, onHide, onLogoutClick, onDeleteClick }) {
+function ProfileModal({ show, onHide, onLogoutClick, onDeleteClick, name, email }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [userData, setUserData] = useState({ name: '', email: '' });
 
   const handleDeleteConfirmation = () => {
     setShowDeleteConfirm(true);
@@ -287,34 +289,10 @@ function ProfileModal({ show, onHide, onLogoutClick, onDeleteClick }) {
     setShowDeleteConfirm(false);
   };
 
-  useEffect(() => {
-    if (show) {
-      const fetchUser = () => {
-        const token = localStorage.getItem('token');
-        fetch('/api/auth/user', {
-          method: 'GET',
-          headers: {
-            'x-auth-token': token, // Include the token here
-          },
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log('User data:', data);
-            setUserData({
-              name: data.name || 'No Name Provided',
-              email: data.email || 'No Email Provided',
-            });
-          })
-          .catch((error) => {
-            console.error('Error fetching user:', error);
-          });
-      };
-
-      fetchUser();
-    } else {
-      setShowDeleteConfirm(false);
-    }
-  }, [show]);
+  const handleDelete = () => {
+    onDeleteClick();
+    setShowDeleteConfirm(false);
+  };
 
   return (
     <>
@@ -326,8 +304,8 @@ function ProfileModal({ show, onHide, onLogoutClick, onDeleteClick }) {
         <Modal.Body style={{ textAlign: 'left' }}>
           {/* User info */}
           <div style={{ marginBottom: '15px' }}>
-            <p><strong>Name:</strong> {userData.name}</p>
-            <p><strong>Email:</strong> {userData.email}</p>
+            <p><strong>Name:</strong> {name}</p>
+            <p><strong>Email:</strong> {email}</p>
           </div>
 
           <div className="d-flex justify-content-between align-items-center">
@@ -372,7 +350,7 @@ function ProfileModal({ show, onHide, onLogoutClick, onDeleteClick }) {
           <p>Are you sure you want to delete your account?<br /><strong>This action cannot be undone.</strong></p>
           <Button
             variant="danger"
-            onClick={onDeleteClick}
+            onClick={handleDelete}
             style={{ margin: '5px' }}
           >
             Yes, Delete
@@ -390,71 +368,185 @@ function ProfileModal({ show, onHide, onLogoutClick, onDeleteClick }) {
   );
 }
 
+// Add this new component after the SaveAlertModal component
+function PlanDetailsModal({ show, onHide, title, items, type }) {
+  return (
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>{title}</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <h6>{type === 'workout' ? 'Exercises:' : 'Meals:'}</h6>
+        <ul style={{ paddingLeft: '20px' }}>
+          {items?.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onHide}>
+          Close
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
 
+//client table
+function ClientTable({ clients, onEdit, onDelete }) {
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
+  
+  return (
+    <>
+      <Table striped bordered hover responsive>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Goals</th>
+            <th>Body Fat %</th>
+            <th>Blood Sugar</th>
+            <th>Activity Level</th>
+            <th>Medical Conditions</th>
+            <th>Workout Plan</th>
+            <th>Diet Plan</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clients.map((client) => (
+            <tr key={client._id}>
+              <td>{client.name}</td>
+              <td>{client.email}</td>
+              <td>{client.age}</td>
+              <td>{client.gender}</td>
+              <td>{Array.isArray(client.goals) ? client.goals.join(', ') : client.goals}</td>
+              <td>{client.bodyFat}%</td>
+              <td>{client.bloodSugar} mg/dL</td>
+              <td>{client.activityLevel}</td>
+              <td>{client.medicalConditions || 'None'}</td>
+              <td>
+                {client.matchedWorkoutPlan ? (
+                  typeof client.matchedWorkoutPlan === 'string' ? (
+                    client.matchedWorkoutPlan
+                  ) : (
+                    <div>
+                      <strong>{client.matchedWorkoutPlan.title}</strong>
+                      <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                        {client.matchedWorkoutPlan.exercises?.map((exercise, index) => (
+                          <li key={index}>{exercise}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
+                ) : (
+                  'No plan matched'
+                )}
+              </td>
+              <td>
+                {client.matchedDietPlan ? (
+                  typeof client.matchedDietPlan === 'string' ? (
+                    client.matchedDietPlan
+                  ) : (
+                    <div>
+                      <strong>{client.matchedDietPlan.title}</strong>
+                      <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                        {client.matchedDietPlan.meals?.map((meal, index) => (
+                          <li key={index}>{meal}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
+                ) : (
+                  'No plan matched'
+                )}
+              </td>
+              <td>
+                <IconButton onClick={() => onEdit(client)}>
+                  <EditIcon />
+                </IconButton>
+                <IconButton onClick={() => onDelete(client._id)}>
+                  <DeleteIcon />
+                </IconButton>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+
+      <PlanDetailsModal
+        show={selectedPlan !== null}
+        onHide={() => setSelectedPlan(null)}
+        title={selectedPlan?.title || ''}
+        items={selectedPlan?.items || []}
+        type={selectedPlan?.type || ''}
+      />
+    </>
+  );
+}
 
 //client form
-
-function ClientForm({ show, onHide, onSave, editingClient, userData }) {
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('Male');
-  const [goals, setGoals] = useState(['']);
-  const [bodyFat, setBodyFat] = useState('');
-  const [bloodSugar, setBloodSugar] = useState('');
-  const [activityLevel, setActivityLevel] = useState('Sedentary');
-  const [medicalConditions, setMedicalConditions] = useState('');
-  const [email, setEmail] = useState('');
+function ClientForm({ 
+  show, 
+  onHide, 
+  onSave, 
+  editingClient, 
+  userData,
+  setShowLogin,
+  setMatchedPlans,
+  setPendingClientData,
+  setShowMatchConfirmation,
+  setShowClientForm,
+  fetchClients,
+  setShowSaveAlert
+}) {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    age: '',
+    gender: 'Male',
+    goals: [''],
+    bodyFat: '',
+    bloodSugar: '',
+    activityLevel: 'Sedentary',
+    medicalConditions: '',
+    consultantEmail: userData?.email || ''
+  });
 
   useEffect(() => {
     if (editingClient) {
-      setName(editingClient.name || '');
-      setAge(editingClient.age || '');
-      setGender(editingClient.gender || 'Male');
-      setGoals(editingClient.goals && editingClient.goals.length > 0 ? editingClient.goals : ['']);
-
-      setBodyFat(editingClient.bodyFat || '');
-      setBloodSugar(editingClient.bloodSugar || '');
-      setActivityLevel(editingClient.activityLevel || 'Sedentary');
-      setMedicalConditions(editingClient.medicalConditions || '');
-      setEmail(editingClient.email || '');
-    } else {
-      setName('');
-      setAge('');
-      setGender('Male');
-      setGoals(['']);
-      setBodyFat('');
-      setBloodSugar('');
-      setActivityLevel('Sedentary');
-      setMedicalConditions('');
-      setEmail('');
+      setFormData({
+        name: editingClient.name || '',
+        email: editingClient.email || '',
+        age: editingClient.age || '',
+        gender: editingClient.gender || 'Male',
+        goals: editingClient.goals && editingClient.goals.length > 0 ? editingClient.goals : [''],
+        bodyFat: editingClient.bodyFat || '',
+        bloodSugar: editingClient.bloodSugar || '',
+        activityLevel: editingClient.activityLevel || 'Sedentary',
+        medicalConditions: editingClient.medicalConditions || '',
+        consultantEmail: userData?.email || ''
+      });
     }
-  }, [editingClient]);
+  }, [editingClient, userData]);
 
-
-  const handleSubmit =  async(e) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
-    const clientData = {
-      name,
-      age,
-      gender,
-      goals, 
-      bodyFat,
-      bloodSugar,
-      activityLevel,
-      medicalConditions,
-      email,
-      consultantEmail: userData.email,  // ✅ attach the logged-in consultant's email
-    };
-    console.log("🚀 Submitting client data:", clientData);
-    const token = localStorage.getItem('token');
-
-  if (!token) {
-    console.error("No token found, user might not be logged in.");
-    return;
-  }
-  onSave(e, clientData);
- 
+    onSave(
+      e,
+      formData,
+      setShowLogin,
+      setMatchedPlans,
+      setPendingClientData,
+      setShowMatchConfirmation,
+      setShowClientForm,
+      fetchClients,
+      setShowSaveAlert,
+      editingClient?._id
+    );
   };
 
   return (
@@ -463,15 +555,16 @@ function ClientForm({ show, onHide, onSave, editingClient, userData }) {
         <Modal.Title>{editingClient ? 'Update Client' : 'Add Client'}</Modal.Title>
       </Modal.Header>
 
-      <Form onSubmit={handleSubmit}>
+      <Form onSubmit={handleFormSubmit}>
         <Modal.Body>
           <Form.Group className="mb-3">
             <Form.Label>Name</Form.Label>
             <Form.Control
               type="text"
+              name="name"
               placeholder="Client name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               required
             />
           </Form.Group>
@@ -480,28 +573,33 @@ function ClientForm({ show, onHide, onSave, editingClient, userData }) {
   <Form.Label>Email</Form.Label>
   <Form.Control
     type="email"
+              name="email"
     placeholder="Enter client's email"
-    value={email}  // New state for email
-    onChange={(e) => setEmail(e.target.value)}  // Update the email state
+              value={formData.email}
+              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
     required
   />
 </Form.Group>
-
 
           <Form.Group className="mb-3">
             <Form.Label>Age</Form.Label>
             <Form.Control
               type="number"
+              name="age"
               min="1"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
+              value={formData.age}
+              onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
               required
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label>Gender</Form.Label>
-            <Form.Select value={gender} onChange={(e) => setGender(e.target.value)}>
+            <Form.Select 
+              name="gender"
+              value={formData.gender} 
+              onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+            >
               <option>Male</option>
               <option>Female</option>
               <option>Other</option>
@@ -510,26 +608,32 @@ function ClientForm({ show, onHide, onSave, editingClient, userData }) {
 
           <Form.Group className="mb-3">
   <Form.Label>Goal</Form.Label>
-  <Form.Control
-    type="text"
-    placeholder="Enter your goal"
-    value={goals[0]}  // Always use the first goal as there's only one
-    onChange={(e) => setGoals([e.target.value])}  // Update only the first goal
+            <Form.Select
+              name="goals"
+              value={formData.goals[0]}
+              onChange={(e) => setFormData(prev => ({ ...prev, goals: [e.target.value] }))}
     required
-  />
+            >
+              <option value="">Select a goal</option>
+              <option value="Weight Loss">Weight Loss</option>
+              <option value="Fat Loss">Fat Loss</option>
+              <option value="Muscle Gain">Muscle Gain</option>
+              <option value="Toning">Toning</option>
+              <option value="Mobility">Mobility</option>
+              <option value="Performance">Performance</option>
+            </Form.Select>
 </Form.Group>
 
-
-          {/* Additional Fields */}
           <Form.Group className="mb-3">
             <Form.Label>Body Fat %</Form.Label>
             <Form.Control
               type="number"
+              name="bodyFat"
               min="1"
               max="60"
               placeholder="e.g., 20"
-              value={bodyFat}
-              onChange={(e) => setBodyFat(e.target.value)}
+              value={formData.bodyFat}
+              onChange={(e) => setFormData(prev => ({ ...prev, bodyFat: e.target.value }))}
               required
             />
           </Form.Group>
@@ -538,16 +642,21 @@ function ClientForm({ show, onHide, onSave, editingClient, userData }) {
             <Form.Label>Blood Sugar (mg/dL)</Form.Label>
             <Form.Control
               type="number"
+              name="bloodSugar"
               placeholder="e.g., 90"
-              value={bloodSugar}
-              onChange={(e) => setBloodSugar(e.target.value)}
+              value={formData.bloodSugar}
+              onChange={(e) => setFormData(prev => ({ ...prev, bloodSugar: e.target.value }))}
               required
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label>Activity Level</Form.Label>
-            <Form.Select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)}>
+            <Form.Select 
+              name="activityLevel"
+              value={formData.activityLevel} 
+              onChange={(e) => setFormData(prev => ({ ...prev, activityLevel: e.target.value }))}
+            >
               <option>Sedentary</option>
               <option>Lightly Active</option>
               <option>Moderately Active</option>
@@ -560,12 +669,12 @@ function ClientForm({ show, onHide, onSave, editingClient, userData }) {
             <Form.Label>Medical Conditions</Form.Label>
             <Form.Control
               type="text"
+              name="medicalConditions"
               placeholder="e.g., Diabetes, Hypertension"
-              value={medicalConditions}
-              onChange={(e) => setMedicalConditions(e.target.value)}
+              value={formData.medicalConditions}
+              onChange={(e) => setFormData(prev => ({ ...prev, medicalConditions: e.target.value }))}
             />
           </Form.Group>
-
         </Modal.Body>
 
         <Modal.Footer>
@@ -581,8 +690,115 @@ function ClientForm({ show, onHide, onSave, editingClient, userData }) {
   );
 }
 
+// Add this new component after the ClientForm component
+function MatchConfirmationModal({ show, onHide, onConfirm, clientData, matchedPlans }) {
+  // Add null checks and default values
+  const name = clientData?.name || '';
+  const goals = Array.isArray(clientData?.goals) ? clientData.goals.join(', ') : clientData?.goals || '';
+  const activityLevel = clientData?.activityLevel || '';
+  const workoutPlan = matchedPlans?.workoutPlan || 'No matching workout plan found';
+  const dietPlan = matchedPlans?.dietPlan || 'No matching diet plan found';
 
+  return (
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>Confirm Match</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <div className="mb-3">
+          <h6>Client Details:</h6>
+          <p className="mb-1"><strong>Name:</strong> {name}</p>
+          <p className="mb-1"><strong>Goal:</strong> {goals}</p>
+          <p className="mb-1"><strong>Activity Level:</strong> {activityLevel}</p>
+        </div>
+        <div className="mb-3">
+          <h6>Matched Plans:</h6>
+          <div className="p-3 bg-light rounded">
+            <p className="mb-2">
+              <strong>Workout Plan:</strong><br />
+              {workoutPlan}
+            </p>
+            <p className="mb-0">
+              <strong>Diet Plan:</strong><br />
+              {dietPlan}
+            </p>
+          </div>
+        </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onHide}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={onConfirm}>
+          Confirm & Save
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
 
+// Add this new component after the MatchConfirmationModal component
+function SaveAlertModal({ show, onHide, clientData, matchedPlans }) {
+  useEffect(() => {
+    if (show) {
+      const timer = setTimeout(() => {
+        onHide();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [show, onHide]);
+
+  if (!show || !clientData || !matchedPlans) {
+    return null;
+  }
+
+  const dialogStyle = {
+    position: 'fixed',
+    top: '15px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    margin: 0,
+    zIndex: 1060,
+  };
+
+  const contentStyle = {
+    backgroundColor: '#d1e7dd',
+    border: '1px solid #badbcc',
+    borderRadius: '8px',
+    padding: '15px 20px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    textAlign: 'left',
+    minWidth: '300px',
+  };
+
+  // Get plan titles, handling both string and object formats
+  const getPlanTitle = (plan) => {
+    if (!plan) return 'No matching plan';
+    return typeof plan === 'string' ? plan : plan.title || 'Untitled Plan';
+  };
+
+  return (
+    <Modal
+      show={show}
+      onHide={onHide}
+      backdrop={false}
+      keyboard={false}
+      style={dialogStyle}
+      dialogClassName=""
+    >
+      <div style={contentStyle}>
+        <h6 className="mb-2">Client Saved Successfully!</h6>
+        <p className="mb-1"><strong>Name:</strong> {clientData?.name || 'N/A'}</p>
+        <p className="mb-1"><strong>Goal:</strong> {Array.isArray(clientData?.goals) ? clientData.goals.join(', ') : clientData?.goals || 'N/A'}</p>
+        <p className="mb-2"><strong>Activity Level:</strong> {clientData?.activityLevel || 'N/A'}</p>
+        <div className="mt-2">
+          <p className="mb-1"><strong>Workout Plan:</strong> {getPlanTitle(matchedPlans?.workoutPlan)}</p>
+          <p className="mb-0"><strong>Diet Plan:</strong> {getPlanTitle(matchedPlans?.dietPlan)}</p>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 //home page
 function HomePage() {
@@ -603,16 +819,18 @@ function HomePage() {
   const [clients, setClients] = useState([]);
   const [editingClient, setEditingClient] = useState(null);
   const [showDeletecliConfirm, setShowDeletecliConfirm] = useState(false);
-
-const [showClientDeleteAlert, setShowClientDeleteAlert] = useState(false); // New Alert for Client deleted
-const [selectedClientId, setSelectedClientId] = useState(null);
+  const [showClientDeleteAlert, setShowClientDeleteAlert] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [showMatchConfirmation, setShowMatchConfirmation] = useState(false);
+  const [pendingClientData, setPendingClientData] = useState(null);
+  const [matchedPlans, setMatchedPlans] = useState({ workoutPlan: null, dietPlan: null });
+  const [showSaveAlert, setShowSaveAlert] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && userData?.email) {
       fetchClients(userData.email);
     }
   }, [isAuthenticated, userData]);
-  
  
   const fetchClients = async (email) => {
     const token = localStorage.getItem('token');
@@ -638,132 +856,117 @@ const [selectedClientId, setSelectedClientId] = useState(null);
     }
   };
   
-
-//client table
-function ClientTable({ clients, onEdit,onDelete }) {
-  if (!clients || clients.length === 0) {
-    return <p>No clients found.</p>;
-  }
-
-  return (
-    <table className="table table-bordered mt-4">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Age</th>
-          <th>Gender</th>
-          <th>Goal</th>
-          <th>Body Fat</th>
-          <th>Blood Sugar</th>
-          <th>Activity Level</th>
-          <th>Medical Conditions</th>
-          <th>Workout Plan</th> {/* 🏋️ New Column */}
-          <th>Diet Plan</th>    {/* 🥗 New Column */}
-          
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {clients.map((client, idx) => (
-          <tr key={idx}>
-            <td>{client.name}</td>
-            <td>{client.email}</td> {/* Updated field */}
-            <td>{client.age}</td>
-            <td>{client.gender}</td>
-            <td>{client.goals?.[0] || '-'}</td> 
-
-            <td>{client.bodyFat}</td> {/* Updated field */}
-            <td>{client.bloodSugar}</td> {/* Updated field */}
-            <td>{client.activityLevel}</td> {/* Updated field */}
-            <td>{client.medicalConditions || 'N/A'}</td> {/* Updated field */}
-            <td>{client.workoutPlan || 'Not Matched'}</td> {/* 🏋️ Show matched workout */}
-            <td>{client.dietPlan || 'Not Matched'}</td>     {/* 🥗 Show matched diet */}
-            <td>
-              <button
-                className="btn btn-sm btn-warning"
-                onClick={() => onEdit(client)}
-              >
-                Update
-              </button><hr/>
-
-        {/* 🗑️ Delete Button */}
-       <button
-  className="btn btn-sm btn-danger"
-  onClick={() => {
-    setSelectedClientId(client._id);
-    setShowDeletecliConfirm(true);
-  }}
->
-  Delete
-</button>
-
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-
-  const handleSubmit = async (e, clientData) => {
+  const handleSubmit = async (e, formData, setShowLogin, setMatchedPlans, setPendingClientData, setShowMatchConfirmation, setShowClientForm, fetchClients, setShowSaveAlert, clientId) => {
     e.preventDefault();
-      const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     
-      if (!token) {
-        console.error("No token found, user might not be logged in.");
-        return;
-      }
+    if (!token) {
+      console.error("No token found");
+      setShowLogin(true);
+      return;
+    }
     
-      try {
-        let response; // define response first
-      
-        if (editingClient) {
-          // ✏️ UPDATE existing client
-          console.log('Trying to update client:', editingClient._id);
-          console.log('With data:', clientData);
-          response = await axios.put(
-            `http://localhost:5000/api/clients/${editingClient._id}`,
-            clientData,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'x-auth-token': token,
-              },
+    try {
+      // Get user data from token
+      const tokenData = JSON.parse(atob(token.split('.')[1]));
+      const userEmail = tokenData.user.email;
+      const userId = tokenData.user.id; // Get the user ID from token
+
+      // Map activity level to server expected values
+      const activityLevelMap = {
+        'Sedentary': 'Low',
+        'Lightly Active': 'Low',
+        'Moderately Active': 'Medium',
+        'Very Active': 'High',
+        'Extra Active': 'High'
+      };
+
+      // Format the data
+      const formattedData = {
+        name: formData.name,
+        email: formData.email,
+        age: parseInt(formData.age, 10),
+        gender: formData.gender,
+        goals: Array.isArray(formData.goals) ? formData.goals : [formData.goals],
+        bodyFat: parseFloat(formData.bodyFat),
+        bloodSugar: parseFloat(formData.bloodSugar),
+        activityLevel: activityLevelMap[formData.activityLevel] || 'Low',
+        medicalConditions: formData.medicalConditions || '',
+        consultantEmail: userEmail,
+        createdBy: userId // Use user ID instead of email
+      };
+
+      console.log('Sending data to server:', formattedData);
+
+      let response;
+      if (clientId) {
+        // For updates, send all fields to ensure proper update
+        console.log('Updating client with ID:', clientId);
+        response = await axios.put(
+          `http://localhost:5000/api/clients/${clientId}`,
+          formattedData,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-token': token
             }
-          );
-        } else {
-          // ➕ ADD new client
-          response = await axios.post(
-            'http://localhost:5000/api/clients',
-            clientData,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'x-auth-token': token,
-              },
+          }
+        );
+      } else {
+        // Create new client
+        response = await axios.post(
+          'http://localhost:5000/api/clients',
+          formattedData,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-token': token
             }
-          );
-        }
-      
-        if (response.status === 200 || response.status === 201) {
-          console.log('Client saved successfully:', response.data);
-          fetchClients(userData.email); // refresh updated clients from server
-          setShowClientForm(false);     // close the form modal
-          setEditingClient(null);       // clear editing client
-          
-        }
-      } catch (err) {
-        console.error("Client creation error:", err.message || err);
-       
+          }
+        );
       }
       
-    };      
+      console.log('Server response:', response.data);
+
+      if (response.data) {
+        // First set the client data
+        setPendingClientData(formData);
+        
+        // Get the matched plans from the server response
+        const serverResponse = response.data;
+        const newMatchedPlans = {
+          workoutPlan: serverResponse.matchedWorkoutPlan || null,
+          dietPlan: serverResponse.matchedDietPlan || null
+        };
+        
+        // Store the matched plans
+        setMatchedPlans(newMatchedPlans);
+        
+        // Close the form
+        setShowClientForm(false);
+        
+        // Refresh the client list
+        fetchClients(userEmail);
+        
+        // Show the alert after a short delay to ensure state updates are complete
+        setTimeout(() => {
+          setShowSaveAlert(true);
+        }, 100);
+      }
+    } catch (err) {
+      console.error("Error getting matches:", err);
+      if (err.response?.status === 401) {
+        setShowLogin(true);
+      } else if (err.response?.data) {
+        // Log the specific error message from the server
+        console.error("Server error details:", err.response.data);
+      }
+    }
+  };      
 
    const handleDeleteClient = (clientId) => {
-  setSelectedClientId(clientId);      // Save the ID of the client you want to delete
-  setShowDeleteConfirm(true);          // Open the confirm modal
+    setSelectedClientId(clientId);
+    setShowDeletecliConfirm(true);
 };
 
 const handleConfirmDelete = async () => {
@@ -773,17 +976,16 @@ const handleConfirmDelete = async () => {
     await axios.delete(`http://localhost:5000/api/clients/${selectedClientId}`, {
       headers: { 'x-auth-token': token }
     });
-    fetchClients(userData.email);    // Refresh the client table
+      fetchClients(userData.email);
     setShowDeletecliConfirm(false);  
-    setSelectedClientId(null)
-    setShowClientDeleteAlert(true)   // Close the modal after deletion
+      setSelectedClientId(null);
+      setShowClientDeleteAlert(true);
   } catch (error) {
     console.error('Error deleting client:', error.response?.data || error.message);
     setShowDeletecliConfirm(false);   
-    setSelectedClientId(null)    // Close the modal even on error
+      setSelectedClientId(null);
   }
 };
-
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -831,8 +1033,6 @@ const handleConfirmDelete = async () => {
       });
   };
   
-
-  
   const handleLogout = () => {
     localStorage.removeItem('token');
     setClients([]);
@@ -841,7 +1041,6 @@ const handleConfirmDelete = async () => {
     setShowProfileModal(false);
     setTimeout(() => setShowLogoutAlert(false), 1000);
   };
-
  
   const handleEditClient = (client) => {
     setEditingClient(client);
@@ -853,17 +1052,19 @@ const handleConfirmDelete = async () => {
     fetch('http://localhost:5000/api/auth/delete', {
       method: 'DELETE',
       headers: { 'x-auth-token': token },
-    } )
+    })
       .then(() => {
         localStorage.removeItem('token');
         setIsAuthenticated(false);
-        setShowDeleteConfirm(true);
-        setShowDeleteAlert(true);
         setShowProfileModal(false);
+        setShowDeleteConfirm(false);
+        setShowDeleteAlert(true);
         setTimeout(() => setShowDeleteAlert(false), 3000);
-        setTimeout(() => setShowDeleteConfirm(false), 1000);
+      })
+      .catch(error => {
+        console.error('Error deleting account:', error);
+        setShowDeleteConfirm(false);
       });
-      
   };
 
   const handleRegister = (newUser) => {
@@ -911,17 +1112,23 @@ const handleConfirmDelete = async () => {
       <Container className="mt-4">
         {isAuthenticated ? (
           <>
-            <ClientTable clients={clients} onEdit={handleEditClient}   onDelete={handleDeleteClient} />
+            <ClientTable clients={clients} onEdit={handleEditClient} onDelete={handleDeleteClient} />
             <ClientForm
               show={showClientForm}
               onHide={() => {
                 setShowClientForm(false);
                 setEditingClient(null);
               }}
-             
               onSave={handleSubmit} 
               editingClient={editingClient}
-              userData={userData} // ✅ pass this
+              userData={userData}
+              setShowLogin={setShowLogin}
+              setMatchedPlans={setMatchedPlans}
+              setPendingClientData={setPendingClientData}
+              setShowMatchConfirmation={setShowMatchConfirmation}
+              setShowClientForm={setShowClientForm}
+              fetchClients={fetchClients}
+              setShowSaveAlert={setShowSaveAlert}
             />
           </>
         ) : (
@@ -948,40 +1155,62 @@ const handleConfirmDelete = async () => {
         show={showProfileModal}
         onHide={() => setShowProfileModal(false)}
         onLogoutClick={handleLogout}
-        showDeleteAlert={showDeleteAlert}
         onDeleteClick={handleDeleteAccount}
         name={userData.name}
         email={userData.email}
       />
 
-      <AlertModal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)} message="Account deleted successfully!" />
+      {showDeleteAlert && (
+        <AlertModal 
+          show={showDeleteAlert} 
+          onHide={() => setShowDeleteAlert(false)} 
+          message="Account deleted successfully!" 
+        />
+      )}
       <AlertModal show={showLogoutAlert} onHide={() => setShowLogoutAlert(false)} message="Logout successful!" />
       <AlertModal show={showRegisterSuccessAlert} onHide={() => setShowRegisterSuccessAlert(false)} message="Registration Successful! Please log in now." />
       <AlertModal show={showRegisterFailureAlert} onHide={() => setShowRegisterFailureAlert(false)} message="Registration Failed! Email already exists." />
       <AlertModal show={showSuccessAlert} onHide={() => setShowSuccessAlert(false)} message="Login Successful!" />
       <AlertModal show={showErrorAlert} onHide={() => setShowErrorAlert(false)} message="Invalid credentials! Please register or try again" />
- <AlertModal
-  show={showClientDeleteAlert}
-  onHide={() => setShowClientDeleteAlert(false)}
-  message="Client deleted successfully!"
-/>
+      <AlertModal
+        show={showClientDeleteAlert}
+        onHide={() => setShowClientDeleteAlert(false)}
+        message="Client deleted successfully!"
+      />
 
-<Modal show={showDeletecliConfirm} onHide={() => setShowDeletecliConfirm(false)} centered>
-  <Modal.Header closeButton>
-    <Modal.Title>Confirm Deletion</Modal.Title>
-  </Modal.Header>
-  <Modal.Body>Are you sure you want to delete this client?</Modal.Body>
-  <Modal.Footer>
-    <Button variant="secondary" onClick={() => setShowDeletecliConfirm(false)}>
-      Cancel
-    </Button>
-    <Button variant="danger" onClick={handleConfirmDelete}>
-      Confirm
-    </Button>
-  </Modal.Footer>
-</Modal>
+      <Modal show={showDeletecliConfirm} onHide={() => setShowDeletecliConfirm(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Deletion</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Are you sure you want to delete this client?</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeletecliConfirm(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleConfirmDelete}>
+            Confirm
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
+      <MatchConfirmationModal
+        show={showMatchConfirmation}
+        onHide={() => {
+          setShowMatchConfirmation(false);
+          setPendingClientData(null);
+          setMatchedPlans({ workoutPlan: null, dietPlan: null });
+        }}
+        onConfirm={handleSubmit}
+        clientData={pendingClientData}
+        matchedPlans={matchedPlans}
+      />
 
+      <SaveAlertModal
+        show={showSaveAlert}
+        onHide={() => setShowSaveAlert(false)}
+        clientData={pendingClientData}
+        matchedPlans={matchedPlans}
+      />
    </>
   );
 }
